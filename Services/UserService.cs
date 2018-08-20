@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using WebApi.Entities;
 using WebApi.Helpers;
 using WebApi.Repository;
@@ -29,11 +31,10 @@ namespace WebApi.Services
 
         public User Authenticate(string username, string password)
         {
-            var a = this.Repository.GetUserById(1);
+            var a = this.Repository.GetUserById(2);
             if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
                 return null;
-
-            var user = _context.Users.SingleOrDefault(x => x.Username == username);
+            var user = this.Repository.GetUser(username);
 
             // check if username exists
             if (user == null)
@@ -66,8 +67,8 @@ namespace WebApi.Services
             if (this.Repository.GetUsers().Any(x => x.Username == user.Username))
                 throw new AppException("Username \"" + user.Username + "\" is already taken");
 
-            byte[] passwordHash, passwordSalt;
-            CreatePasswordHash(password, out passwordHash, out passwordSalt);
+            string passwordHash="", passwordSalt="";
+            CreatePasswordHash(password,ref passwordHash,ref passwordSalt);
 
             user.PasswordHash = passwordHash;
             user.PasswordSalt = passwordSalt;
@@ -103,8 +104,8 @@ namespace WebApi.Services
             // update password if it was entered
             if (!string.IsNullOrWhiteSpace(password))
             {
-                byte[] passwordHash, passwordSalt;
-                CreatePasswordHash(password, out passwordHash, out passwordSalt);
+                string passwordHash="", passwordSalt="";
+                CreatePasswordHash(password,ref passwordHash,ref passwordSalt);
 
                 user.PasswordHash = passwordHash;
                 user.PasswordSalt = passwordSalt;
@@ -126,34 +127,18 @@ namespace WebApi.Services
 
         // private helper methods
 
-        private static void CreatePasswordHash(string password, out byte[] passwordHash, out byte[] passwordSalt)
+        private static void CreatePasswordHash(string password,ref string passwordHash,ref string passwordSalt)
         {
             if (password == null) throw new ArgumentNullException("password");
             if (string.IsNullOrWhiteSpace(password)) throw new ArgumentException("Value cannot be empty or whitespace only string.", "password");
-
-            using (var hmac = new System.Security.Cryptography.HMACSHA512())
-            {
-                passwordSalt = hmac.Key;
-                passwordHash = hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes(password));
-            }
+                passwordHash = Criptografia.Encrypt(password.ToString());
         }
-
-        private static bool VerifyPasswordHash(string password, byte[] storedHash, byte[] storedSalt)
+        private static bool VerifyPasswordHash(string password, string storedHash, string storedSalt)
         {
             if (password == null) throw new ArgumentNullException("password");
             if (string.IsNullOrWhiteSpace(password)) throw new ArgumentException("Value cannot be empty or whitespace only string.", "password");
-            if (storedHash.Length != 64) throw new ArgumentException("Invalid length of password hash (64 bytes expected).", "passwordHash");
-            if (storedSalt.Length != 128) throw new ArgumentException("Invalid length of password salt (128 bytes expected).", "passwordHash");
-
-            using (var hmac = new System.Security.Cryptography.HMACSHA512(storedSalt))
-            {
-                var computedHash = hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes(password));
-                for (int i = 0; i < computedHash.Length; i++)
-                {
-                    if (computedHash[i] != storedHash[i]) return false;
-                }
-            }
-
+            if (Criptografia.Encrypt(password) != storedHash)
+                return false;
             return true;
         }
     }

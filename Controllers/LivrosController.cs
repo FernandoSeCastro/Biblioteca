@@ -6,6 +6,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using WebApi.Entities;
 using WebApi.Helpers;
+using WebApi.Services;
+using AutoMapper;
+using Microsoft.Extensions.Options;
 
 namespace WebApi.Controllers
 {
@@ -13,31 +16,28 @@ namespace WebApi.Controllers
     [Produces("application/json")]
     public class LivrosController : Controller
     {
-       private readonly DataContext _context;
-       public LivrosController(DataContext context)
+        private ILivroService _livroService;
+        private IMapper _mapper;
+        private readonly AppSettings _appSettings;
+        public LivrosController(
+            ILivroService livroService,
+            IMapper mapper,
+            IOptions<AppSettings> appSettings)
         {
-            _context = context;
-
-            if (_context.Livros.Count() == 0)
-            {
-                _context.Livros.Add(new Livro { Nome = "Livro 1", Autor ="Autor 1",DataFabricacao="10/05/1994",Ano = 1994 });
-                _context.Livros.Add(new Livro { Nome = "Livro 2", Autor ="Autor 2",DataFabricacao="10/05/1994",Ano = 1994 });
-                _context.Livros.Add(new Livro { Nome = "Livro 3", Autor ="Autor 3",DataFabricacao="10/05/1994",Ano = 1994 });
-                _context.Livros.Add(new Livro { Nome = "Livro 4", Autor ="Autor 4",DataFabricacao="10/05/1994",Ano = 1994 });
-                _context.SaveChanges();
-            }
-        }    
-
+            _livroService = livroService;
+            _mapper = mapper;
+            _appSettings = appSettings.Value;
+        }
         [HttpGet]
         public List<Livro> GetAll()
         {
-            return _context.Livros.OrderBy(i=>i.Nome).ToList();
+            return _livroService.GetAll().OrderBy(i=>i.Nome).ToList();
         }
 
         [HttpGet("{id}", Name = "GetTodo")]
         public Livro GetById(long id)
         {
-            var item = _context.Livros.Find(id);
+            var item = _livroService.GetById(id);
             if (item == null)
             {
                 return new Livro();
@@ -50,8 +50,7 @@ namespace WebApi.Controllers
         {            
             if(string.IsNullOrEmpty(item.Nome))
                 return null;
-            _context.Livros.Add(item);
-            _context.SaveChanges();
+            _livroService.Create(item);
 
             return CreatedAtRoute("GetTodo", new { id = item.Id }, item);
         }
@@ -59,7 +58,7 @@ namespace WebApi.Controllers
         [HttpPut("{id}")]
         public IActionResult Update(long id,[FromBody]Livro item)
         {
-            var todo = _context.Livros.Find(id);
+            var todo = _livroService.GetById(id);
             if (todo == null)
             {
                 return NotFound();
@@ -68,8 +67,7 @@ namespace WebApi.Controllers
             todo.Nome = item.Nome;
             todo.Autor = item.Autor;
 
-            _context.Livros.Update(todo);
-            _context.SaveChanges();
+            _livroService.Update(todo);
             return NoContent();
         }
         
@@ -77,14 +75,13 @@ namespace WebApi.Controllers
         [HttpDelete("{id}")]
         public IActionResult Delete(long id)
         {
-            var livro = _context.Livros.Find(id);
+            var livro = _livroService.GetById(id);
             if (livro == null)
             {
                 return NotFound();
             }
 
-            _context.Livros.Remove(livro);
-            _context.SaveChanges();
+            _livroService.Delete(livro.Id);
             return NoContent();
         }
     }

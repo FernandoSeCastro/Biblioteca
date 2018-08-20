@@ -12,7 +12,7 @@ namespace WebApi.Repository
 {
     public class UserRepository
     {
-        public string ConnectionString = @"Data Source=(LocalDB)\MSSQLLocalDB;AttachDbFilename=C:\Entrevista\Teste.mdf;Integrated Security=True;Connect Timeout=30";
+        public string ConnectionString = @"Data Source=(LocalDB)\MSSQLLocalDB;AttachDbFilename=C:\SISTEMAS\Teste.mdf;Integrated Security=True;Connect Timeout=30";
 
         public void Save(User model)
         {
@@ -58,6 +58,15 @@ namespace WebApi.Repository
             return Users;
         }
 
+        public User GetUser(string username)
+        {
+
+            using (var sqlConnection = new SqlConnection(ConnectionString))
+            {
+                return sqlConnection.Query<User>($"Select * from Users where username = @username ", new {username}).SingleOrDefault();
+            }
+        }
+
         public User GetUserById(int userId)
         {
             using (var sqlConnection = new SqlConnection(ConnectionString))
@@ -71,7 +80,7 @@ namespace WebApi.Repository
         {
             using (var sqlConnection = new SqlConnection(ConnectionString))
             {
-                return sqlConnection.Query<User>($"Select * from Users where username = '{username}' and ", new { username = username }).SingleOrDefault();
+                return sqlConnection.Query<User>($"Select * from Users where username = @username ", new { username }).SingleOrDefault();
             }
 
         }
